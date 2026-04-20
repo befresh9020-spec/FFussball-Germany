@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frauenfußball App</title>
+    
+    <style>
+        /* --- CSS: Variablen für einheitliches Design --- */
+        :root {
+            --primary: #2e7d32; /* Ein sportliches Grün */
+            --bg-color: #f0f2f5;
+            --text-main: #333;
+            --white: #ffffff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            color: var(--text-main);
+            overflow-x: hidden;
+        }
+
+        /* --- Header & Menü-Button --- */
+        header {
+            background-color: var(--primary);
+            color: var(--white);
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .menu-btn {
+            background: none;
+            border: none;
+            color: var(--white);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        h1 { margin: 0; font-size: 1.2rem; }
+
+        /* --- Sidebar (Mobile First: Versteckt am linken Rand) --- */
+        #sidebar {
+            position: fixed;
+            top: 0;
+            left: -250px; /* Versteckt */
+            width: 250px;
+            height: 100vh;
+            background-color: var(--white);
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            transition: left 0.3s ease;
+            z-index: 200;
+            padding-top: 60px;
+        }
+
+        /* Klasse zum Einblenden der Sidebar */
+        #sidebar.open { left: 0; }
+
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .nav-link {
+            display: block;
+            padding: 15px 20px;
+            color: var(--text-main);
+            text-decoration: none;
+            border-bottom: 1px solid #eee;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background-color: #e8f5e9;
+            color: var(--primary);
+        }
+
+        /* --- Hauptinhalt --- */
+        main { padding: 15px; }
+
+        .liga-titel {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        /* --- Tabs (Tabelle / Spieltag) --- */
+        .tabs {
+            display: flex;
+            background-color: var(--white);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: none;
+            font-size: 1rem;
+            font-weight: bold;
+            color: #666;
+            cursor: pointer;
+        }
+
+        .tab-btn.active {
+            background-color: var(--primary);
+            color: var(--white);
+        }
+
+        /* Kontainer für die Ansichten */
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+
+        /* --- Tabellen-Design (ähnlich wie vorher) --- */
+        .card {
+            background-color: var(--white);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        table { width: 100%; border-collapse: collapse; min-width: 320px; }
+        th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+        th { background-color: #f8f9fa; font-size: 0.75rem; text-transform: uppercase; color: #666; }
+        .team-logo { width: 20px; height: 20px; object-fit: contain; vertical-align: middle; margin-right: 8px; }
+
+        /* --- Spieltag-Design --- */
+        .spieltag-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: var(--white);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .spieltag-header select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-size: 1rem;
+        }
+
+        .match-card {
+            background-color: var(--white);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .match-teams { flex: 1; }
+        .match-team-row { display: flex; align-items: center; margin: 4px 0; }
+        .match-score { font-weight: bold; font-size: 1.1rem; padding-left: 15px; }
+        .match-date { font-size: 0.75rem; color: #888; text-align: center; width: 60px;}
+
+        /* Dunkler Hintergrund wenn Sidebar offen ist */
+        #overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.5);
+            z-index: 150;
+        }
+        #overlay.active { display: block; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+        <h1>Frauenfußball App</h1>
+    </header>
+
+    <div id="overlay" onclick="toggleSidebar()"></div>
+
+    <nav id="sidebar">
+        <button class="close-btn" onclick="toggleSidebar()">×</button>
+        <div class="nav-link active" onclick="wechsleLiga('bl1f', '1. Frauen-Bundesliga', this)">1. Frauen-Bundesliga</div>
+        <div class="nav-link" onclick="wechsleLiga('bl2f', '2. Frauen-Bundesliga', this)">2. Frauen-Bundesliga</div>
+        <div class="nav-link" onclick="wechsleLiga('rl-west-f', 'Regionalliga West (Test)', this)">Regionalliga West</div>
+        <div class="nav-link" onclick="wechsleLiga('rl-sued-f', 'Regionalliga Süd (Test)', this)">Regionalliga Süd</div>
+    </nav>
+
+    <main>
+        <h2 class="liga-titel" id="aktuelle-liga-titel">1. Frauen-Bundesliga</h2>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="wechsleTab('tabelle')" id="btn-tabelle">Tabelle</button>
+            <button class="tab-btn" onclick="wechsleTab('spieltag')" id="btn-spieltag">Spieltag</button>
+        </div>
+
+        <div id="ansicht-tabelle" class="view-section active">
+            <div class="card">
+                <table>
+                    <thead><tr><th>Pl.</th><th>Team</th><th>Sp.</th><th>TD</th><th>Pkt.</th></tr></thead>
+                    <tbody id="tabellen-body">
+                        <tr><td colspan="5" style="text-align:center;">Lade Tabelle...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="ansicht-spieltag" class="view-section">
+            <div class="spieltag-header">
+                <span id="aktueller-spieltag-text">Wähle Spieltag:</span>
+                <select id="spieltag-auswahl" onchange="ladeSpieleFuerSpieltag(this.value)">
+                    <option>Lädt...</option>
+                </select>
+            </div>
+            <div id="matches-container">
+                </div>
+        </div>
+    </main>
+
+    <script>
+        /* --- JavaScript: Logik & Datenabruf --- */
+        const apiBase = 'https://api.openligadb.de';
+        let aktuelleLigaShortcut = 'bl1f';
+        let aktuelleSaison = '2025';
+        let alleSpieleDerSaison = []; // Hier speichern wir alle Spiele zwischen
+
+        // 1. Sidebar öffnen/schließen
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('overlay').classList.toggle('active');
+        }
+
+        // 2. Zwischen Tabelle und Spieltag wechseln
+        function wechsleTab(tabName) {
+            // Buttons anpassen
+            document.getElementById('btn-tabelle').classList.remove('active');
+            document.getElementById('btn-spieltag').classList.remove('active');
+            document.getElementById(`btn-${tabName}`).classList.add('active');
+
+            // Ansichten anpassen
+            document.getElementById('ansicht-tabelle').classList.remove('active');
+            document.getElementById('ansicht-spieltag').classList.remove('active');
+            document.getElementById(`ansicht-${tabName}`).classList.add('active');
+        }
+
+        // 3. Liga über die Sidebar wechseln
+        function wechsleLiga(shortcut, titel, element) {
+            aktuelleLigaShortcut = shortcut;
+            document.getElementById('aktuelle-liga-titel').innerText = titel;
+            
+            // Aktiven Status in der Sidebar optisch setzen
+            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+            element.classList.add('active');
+            
+            toggleSidebar(); // Menü schließen nach Klick
+            
+            // Daten neu laden
+            ladeTabelle();
+            ladeAlleSpiele();
+        }
+
+        // 4. Tabelle abrufen
+        async function ladeTabelle() {
+            const body = document.getElementById('tabellen-body');
+            body.innerHTML = '<tr><td colspan="5" style="text-align:center;">Lade...</td></tr>';
+            
+            try {
+                const res = await fetch(`${apiBase}/getbltable/${aktuelleLigaShortcut}/${aktuelleSaison}`);
+                const daten = await res.json();
+                
+                if (daten.length === 0) throw new Error("Keine Daten");
+
+                body.innerHTML = '';
+                daten.forEach((team, index) => {
+                    body.innerHTML += `
+                        <tr>
+                            <td>${index + 1}.</td>
+                            <td><img class="team-logo" src="${team.teamIconUrl}" alt="">${team.teamName}</td>
+                            <td>${team.matches}</td>
+                            <td>${team.goalDiff}</td>
+                            <td><strong>${team.points}</strong></td>
+                        </tr>
+                    `;
+                });
+            } catch (err) {
+                body.innerHTML = `<tr><td colspan="5" style="text-align:center; color:red;">Daten für diese Liga aktuell nicht in der API verfügbar.</td></tr>`;
+            }
+        }
+
+        // 5. Alle Spiele der Saison abrufen (für die Spieltags-Ansicht)
+        async function ladeAlleSpiele() {
+            const container = document.getElementById('matches-container');
+            const select = document.getElementById('spieltag-auswahl');
+            container.innerHTML = 'Lade Spiele...';
+            select.innerHTML = '';
+
+            try {
+                // Holt alle Spiele der Saison
+                const res = await fetch(`${apiBase}/getmatchdata/${aktuelleLigaShortcut}/${aktuelleSaison}`);
+                alleSpieleDerSaison = await res.json();
+
+                if (alleSpieleDerSaison.length === 0) throw new Error("Keine Spiele");
+
+                // Herausfinden, wie viele Spieltage es gibt
+                const maxSpieltag = Math.max(...alleSpieleDerSaison.map(spiel => spiel.group.groupOrderID));
+                
+                // Dropdown füllen
+                for (let i = 1; i <= maxSpieltag; i++) {
+                    select.innerHTML += `<option value="${i}">Spieltag ${i}</option>`;
+                }
+
+                // Aktuellen Spieltag herausfinden (erstes Spiel, das noch nicht beendet ist)
+                const aktuellesSpiel = alleSpieleDerSaison.find(spiel => spiel.matchIsFinished === false);
+                const anzuzeigenderSpieltag = aktuellesSpiel ? aktuellesSpiel.group.groupOrderID : maxSpieltag;
+                
+                select.value = anzuzeigenderSpieltag;
+                ladeSpieleFuerSpieltag(anzuzeigenderSpieltag);
+
+            } catch (err) {
+                container.innerHTML = '<p style="color:red; text-align:center;">Keine Spieldaten für diese Liga verfügbar.</p>';
+                select.innerHTML = '<option>-</option>';
+            }
+        }
+
+        // 6. Die HTML-Karten für einen bestimmten Spieltag bauen
+        function ladeSpieleFuerSpieltag(spieltagNummer) {
+            const container = document.getElementById('matches-container');
+            container.innerHTML = '';
+
+            // Spiele aus unserem Array filtern, die zu diesem Spieltag gehören
+            const spieleDiesesSpieltags = alleSpieleDerSaison.filter(spiel => spiel.group.groupOrderID == spieltagNummer);
+
+            spieleDiesesSpieltags.forEach(spiel => {
+                // Datum formatieren
+                const date = new Date(spiel.matchDateTime);
+                const dateStr = `${date.getDate()}.${date.getMonth()+1}.`;
+                const timeStr = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+
+                // Ergebnisse herausfinden (falls schon gespielt)
+                let toreTeam1 = '-';
+                let toreTeam2 = '-';
+                if (spiel.matchResults && spiel.matchResults.length > 0) {
+                    // Das letzte Ergebnis im Array ist meist das Endergebnis
+                    const endstand = spiel.matchResults[spiel.matchResults.length - 1];
+                    toreTeam1 = endstand.pointsTeam1;
+                    toreTeam2 = endstand.pointsTeam2;
+                }
+
+                container.innerHTML += `
+                    <div class="match-card">
+                        <div class="match-date">
+                            ${dateStr}<br>${timeStr}
+                        </div>
+                        <div class="match-teams">
+                            <div class="match-team-row">
+                                <img class="team-logo" src="${spiel.team1.teamIconUrl}" alt=""> ${spiel.team1.teamName}
+                            </div>
+                            <div class="match-team-row">
+                                <img class="team-logo" src="${spiel.team2.teamIconUrl}" alt=""> ${spiel.team2.teamName}
+                            </div>
+                        </div>
+                        <div class="match-score">
+                            ${toreTeam1}<br>${toreTeam2}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Init: Beim Laden der Seite die erste Liga laden
+        ladeTabelle();
+        ladeAlleSpiele();
+
+    </script>
+</body>
+</html>
